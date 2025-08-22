@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Be Healthy AI</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+
+    <body>
+        <div class="container">
+            <header>
+                <h1>Be Healthy AI</h1>
+                <p class="subtitle">Ask food (example: chicken 150g)</p>
+            </header>
+            <main id="chat" class="chat"></main>
+            <form id="form" class="form">
+                <input id="input" type="text" placeholder="Food name" required>
+                <input id="weight" type="number" min="1" placeholder="Weight g">
+                <button type="submit">Send</button>
+            </form>
+            <footer class="footer">
+                <small>Data: CSV (fallback 5000 foods)</small>
+            </footer>
+        </div>
+        <script src="{{ url_for('static', filename='chat.js') }}"></script>
+    </body>
+
+</html>
