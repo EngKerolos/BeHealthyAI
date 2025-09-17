@@ -4,13 +4,36 @@
 # ======================================================
 
 from flask import Flask, request, jsonify, render_template
-from cs50 import SQL
+import sqlite3
 import csv
 import os
 import random
 import re
 from difflib import get_close_matches
 from datetime import datetime
+
+# -------------------
+# Wrapper for db to mimic cs50.SQL
+# -------------------
+class SQL:
+    def __init__(self, db_url):
+        # db_url: "sqlite:///filename.db"
+        self.db_file = db_url.replace("sqlite:///", "")
+        self.conn = sqlite3.connect(self.db_file, check_same_thread=False)
+        self.conn.row_factory = sqlite3.Row  # عشان النتائج تبقى dict
+        self.cur = self.conn.cursor()
+
+    def execute(self, query, *args):
+        try:
+            self.cur.execute(query, args)
+            if query.strip().lower().startswith("select"):
+                return [dict(row) for row in self.cur.fetchall()]
+            else:
+                self.conn.commit()
+                return []
+        except Exception as e:
+            print("SQL Error:", e)
+            return []
 
 # -------------------
 # Flask app setup
@@ -57,8 +80,6 @@ CREATE TABLE IF NOT EXISTS messages (
 # -------------------
 # Generate CSV (5000 foods fallback)
 # -------------------
-
-
 def generate_csv(path=CSV_FILE, total=5000):
     if os.path.exists(path):
         return
@@ -111,14 +132,11 @@ def generate_csv(path=CSV_FILE, total=5000):
         for name, macros in final_list[:total]:
             writer.writerow([name, macros[0], macros[1], macros[2], macros[3]])
 
-
 generate_csv()
 
 # -------------------
 # Load CSV into DB
 # -------------------
-
-
 def load_csv(path=CSV_FILE):
     if db.execute("SELECT COUNT(*) AS c FROM nutrition")[0]["c"] > 0:
         return
@@ -134,7 +152,6 @@ def load_csv(path=CSV_FILE):
             except Exception:
                 continue
 
-
 load_csv()
 
 # -------------------
@@ -146,8 +163,6 @@ FOOD_INDEX.sort()
 # -------------------
 # Parse query & weight
 # -------------------
-
-
 def parse_query(text):
     weight = None
     m = re.search(r"(\d{1,5})\s*(g|gram|grams)?", text, flags=re.I)
@@ -164,8 +179,6 @@ def parse_query(text):
 # -------------------
 # Find food
 # -------------------
-
-
 def find_food(query):
     q = query.strip()
     if not q:
@@ -184,12 +197,9 @@ def find_food(query):
 # -------------------
 # Routes
 # -------------------
-
-
 @app.route("/")
 def index_page():
     return render_template("index.html")
-
 
 @app.route("/api/nutrition", methods=["POST"])
 def api_nutrition():
@@ -229,7 +239,6 @@ def api_nutrition():
     return jsonify({"ok": True, "matched_name": name, "confidence": conf, "weight_g": weight,
                     "calories": cal, "protein": prot, "carbs": carbs, "fat": fat, "text": reply})
 
-
 @app.route("/api/history", methods=["GET"])
 def api_history():
     try:
@@ -240,10 +249,10 @@ def api_history():
         "SELECT role,text,query,weight_g,calories,protein,carbs,fat,created_at FROM messages ORDER BY id DESC LIMIT ?", limit)
     return jsonify({"ok": True, "messages": rows})
 
-
 # -------------------
 # Run server
 # -------------------
 if __name__ == "__main__":
     print("Starting server on http://localhost:5000")
     app.run(host="0.0.0.0", port=5000, debug=True)
+
