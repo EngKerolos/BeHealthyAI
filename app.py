@@ -13,14 +13,14 @@ from difflib import get_close_matches
 from datetime import datetime
 
 # -------------------
-# Wrapper for db to mimic cs50.SQL
+# SQLite wrapper class
 # -------------------
 class SQL:
     def __init__(self, db_url):
         # db_url: "sqlite:///filename.db"
         self.db_file = db_url.replace("sqlite:///", "")
         self.conn = sqlite3.connect(self.db_file, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row  # عشان النتائج تبقى dict
+        self.conn.row_factory = sqlite3.Row  # fetch results as dict
         self.cur = self.conn.cursor()
 
     def execute(self, query, *args):
@@ -42,7 +42,7 @@ app = Flask(__name__)
 DB_FILE = "be_healthy_ai.db"
 CSV_FILE = "foods_global.csv"
 
-# ensure the database file exists
+# Ensure the database file exists
 if not os.path.exists(DB_FILE):
     open(DB_FILE, 'w').close()
 
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS messages (
 """)
 
 # -------------------
-# Generate CSV (5000 foods fallback)
+# Generate CSV if missing
 # -------------------
 def generate_csv(path=CSV_FILE, total=5000):
     if os.path.exists(path):
@@ -101,6 +101,7 @@ def generate_csv(path=CSV_FILE, total=5000):
     portion_templates = ["{name}", "{method} {name}",
                          "{name} ({method})", "{method} {name} with herbs"]
     candidates = []
+    # generate variations of base foods
     for name, macros in base_foods.items():
         candidates.append((name, macros))
         for _ in range(4):
@@ -112,6 +113,7 @@ def generate_csv(path=CSV_FILE, total=5000):
             cb = round(macros[2]*random.uniform(0.88, 1.1), 1)
             f = round(macros[3]*random.uniform(0.8, 1.4), 1)
             candidates.append((new_name, (c, p, cb, f)))
+    # create final list of foods
     final_list = []
     idx = 0
     suffixes = ["", " - restaurant style",
@@ -126,6 +128,7 @@ def generate_csv(path=CSV_FILE, total=5000):
         f = round(base_macros[3]*random.uniform(0.85, 1.25), 1)
         final_list.append((name, (c, p, cb, f)))
         idx += 1
+    # save CSV
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["Food", "Calories", "Protein", "Carbs", "Fat"])
@@ -161,7 +164,7 @@ FOOD_INDEX = [r["food_name"] for r in db.execute("SELECT food_name FROM nutritio
 FOOD_INDEX.sort()
 
 # -------------------
-# Parse query & weight
+# Parse query and weight
 # -------------------
 def parse_query(text):
     weight = None
@@ -177,7 +180,7 @@ def parse_query(text):
     return text.strip(), max(1, weight)
 
 # -------------------
-# Find food
+# Find food by name
 # -------------------
 def find_food(query):
     q = query.strip()
